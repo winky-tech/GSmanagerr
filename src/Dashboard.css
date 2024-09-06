@@ -1,0 +1,60 @@
+body,
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  width: 207%;
+}
+
+.dashboard h1 {
+  background-color: #4a90e2;
+  color: white;
+  padding: 1rem;
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.dashboard-sidebar {
+  width: 200px;
+  background-color: #f0f2f5;
+  padding: 1rem;
+  overflow-y: auto;
+  height: calc(100vh - 60px); /* Adjust 60px based on your header height */
+}
+
+.dashboard-main {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  height: calc(100vh - 200px); /* Adjust 60px based on your header height */
+}
+
+.dashboard button {
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard button:hover {
+  background-color: #357ae8;
+}
