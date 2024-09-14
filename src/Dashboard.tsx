@@ -96,6 +96,10 @@ const LotteryManagement: React.FC = () => {
     $50: ["1529", "1529"],
   });
 
+  const [openNumbers, setOpenNumbers] = useState<{
+    [key: string]: { [ticket: string]: string };
+  }>({});
+
   const ticketAmounts = ["$1", "$2", "$3", "$5", "$10", "$20", "$30", "$50"];
 
   useEffect(() => {
@@ -119,15 +123,17 @@ const LotteryManagement: React.FC = () => {
       });
       setLocalTicketLists(mergedTicketLists);
     }
+
+    const savedOpenNumbers = localStorage.getItem("lotteryOpenNumbers");
+    if (savedOpenNumbers) {
+      setOpenNumbers(JSON.parse(savedOpenNumbers));
+    }
   }, []);
 
   useEffect(() => {
     // Save ticket lists to localStorage whenever they change
-    localStorage.setItem(
-      "lotteryTicketLists",
-      JSON.stringify(localTicketLists)
-    );
-  }, [localTicketLists]);
+    localStorage.setItem("lotteryOpenNumbers", JSON.stringify(openNumbers));
+  }, [openNumbers]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newAmount = e.target.value;
@@ -136,7 +142,12 @@ const LotteryManagement: React.FC = () => {
   };
 
   const handleTicketChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedTicket(e.target.value);
+    const newTicket = e.target.value;
+    setSelectedTicket(newTicket);
+    if (selectedAmount && newTicket) {
+      setOpenNumber(openNumbers[selectedAmount]?.[newTicket] || "");
+    }
+    setCloseNumber("");
   };
 
   const handleSubmit = () => {
@@ -147,9 +158,15 @@ const LotteryManagement: React.FC = () => {
         openNumber,
         closeNumber
       );
-      setOpenNumber("");
+      setOpenNumbers((prev) => ({
+        ...prev,
+        [selectedAmount]: {
+          ...(prev[selectedAmount] || {}),
+          [selectedTicket]: closeNumber,
+        },
+      }));
+      setOpenNumber(closeNumber);
       setCloseNumber("");
-      setSelectedTicket(null);
     }
   };
 
@@ -183,7 +200,16 @@ const LotteryManagement: React.FC = () => {
       });
       if (selectedTicket === ticketToDelete) {
         setSelectedTicket(null);
+        setOpenNumber("");
+        setCloseNumber("");
       }
+      setOpenNumbers((prev) => {
+        const updatedOpenNumbers = { ...prev };
+        if (updatedOpenNumbers[selectedAmount]) {
+          delete updatedOpenNumbers[selectedAmount][ticketToDelete];
+        }
+        return updatedOpenNumbers;
+      });
     }
   };
 

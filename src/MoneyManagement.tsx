@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
-import './Components.css';
+import "./Components.css";
 
 const MoneyManagement: React.FC = () => {
   const [values, setValues] = useState({
