@@ -49,27 +49,13 @@ const userInterfaces: UserInterface = {
 };
 
 const LotteryManagement: React.FC = () => {
-  const { updateLotteryData } = useGasStation();
+  const { updateLotteryData, lotteryData } = useGasStation();
   const [selectedAmount, setSelectedAmount] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [openNumber, setOpenNumber] = useState("");
   const [closeNumber, setCloseNumber] = useState("");
-  const [localSubmittedData, setLocalSubmittedData] = useState<{
-    [key: string]: { [key: string]: any };
-  }>({});
   const [newTicketNumber, setNewTicketNumber] = useState("");
-
-  const ticketAmounts = [
-    "$1",
-    "$2",
-    "$3",
-    "$5",
-    "$10",
-    "$20",
-    "$30",
-    "$50",
-  ] as const;
-  const [ticketLists, setTicketLists] = useState<{
+  const [localTicketLists, setLocalTicketLists] = useState<{
     [key: string]: string[];
   }>({
     $1: ["1544", "7026", "1536"],
@@ -110,10 +96,43 @@ const LotteryManagement: React.FC = () => {
     $50: ["1529", "1529"],
   });
 
+  const ticketAmounts = ["$1", "$2", "$3", "$5", "$10", "$20", "$30", "$50"];
+
+  useEffect(() => {
+    // Load ticket lists from localStorage on component mount
+    const savedTicketLists = localStorage.getItem("lotteryTicketLists");
+    if (savedTicketLists) {
+      const parsedTicketLists = JSON.parse(savedTicketLists);
+      // Merge saved ticket lists with default lists
+      const mergedTicketLists = { ...localTicketLists };
+      Object.keys(parsedTicketLists).forEach((amount) => {
+        if (mergedTicketLists[amount]) {
+          // Add unique tickets from saved list
+          parsedTicketLists[amount].forEach((ticket: string) => {
+            if (!mergedTicketLists[amount].includes(ticket)) {
+              mergedTicketLists[amount].push(ticket);
+            }
+          });
+        } else {
+          mergedTicketLists[amount] = parsedTicketLists[amount];
+        }
+      });
+      setLocalTicketLists(mergedTicketLists);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save ticket lists to localStorage whenever they change
+    localStorage.setItem(
+      "lotteryTicketLists",
+      JSON.stringify(localTicketLists)
+    );
+  }, [localTicketLists]);
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newAmount = e.target.value;
     setSelectedAmount(newAmount);
-    setSelectedTicket(null); // Reset selected ticket when amount changes
+    setSelectedTicket(null);
   };
 
   const handleTicketChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -122,27 +141,12 @@ const LotteryManagement: React.FC = () => {
 
   const handleSubmit = () => {
     if (selectedAmount && selectedTicket && openNumber && closeNumber) {
-      const totalSold = Math.abs(parseInt(closeNumber) - parseInt(openNumber));
-      const total = totalSold * parseInt(selectedAmount.replace("$", ""));
-
       updateLotteryData(
         selectedAmount,
         selectedTicket,
         openNumber,
         closeNumber
       );
-      setLocalSubmittedData((prevData) => ({
-        ...prevData,
-        [selectedAmount]: {
-          ...prevData[selectedAmount],
-          [selectedTicket]: {
-            open: openNumber,
-            close: closeNumber,
-            totalSold: totalSold,
-            total: total,
-          },
-        },
-      }));
       setOpenNumber("");
       setCloseNumber("");
       setSelectedTicket(null);
@@ -151,11 +155,35 @@ const LotteryManagement: React.FC = () => {
 
   const addCustomTicket = () => {
     if (newTicketNumber && selectedAmount) {
-      setTicketLists((prev) => ({
-        ...prev,
-        [selectedAmount]: [...prev[selectedAmount], newTicketNumber],
-      }));
+      setLocalTicketLists((prev) => {
+        const updatedList = {
+          ...prev,
+          [selectedAmount]: [
+            ...new Set([...prev[selectedAmount], newTicketNumber]),
+          ],
+        };
+        localStorage.setItem("lotteryTicketLists", JSON.stringify(updatedList));
+        return updatedList;
+      });
       setNewTicketNumber("");
+    }
+  };
+
+  const deleteTicket = (ticketToDelete: string) => {
+    if (selectedAmount) {
+      setLocalTicketLists((prev) => {
+        const updatedList = {
+          ...prev,
+          [selectedAmount]: prev[selectedAmount].filter(
+            (ticket) => ticket !== ticketToDelete
+          ),
+        };
+        localStorage.setItem("lotteryTicketLists", JSON.stringify(updatedList));
+        return updatedList;
+      });
+      if (selectedTicket === ticketToDelete) {
+        setSelectedTicket(null);
+      }
     }
   };
 
@@ -193,13 +221,11 @@ const LotteryManagement: React.FC = () => {
             className="w-full p-2 border rounded"
           >
             <option value="">Select a ticket</option>
-            {ticketLists[selectedAmount as keyof typeof ticketLists].map(
-              (ticket, index) => (
-                <option key={`${ticket}-${index}`} value={ticket}>
-                  {ticket}
-                </option>
-              )
-            )}
+            {localTicketLists[selectedAmount].map((ticket) => (
+              <option key={ticket} value={ticket}>
+                {ticket}
+              </option>
+            ))}
           </select>
         </div>
       )}
@@ -210,16 +236,38 @@ const LotteryManagement: React.FC = () => {
           value={newTicketNumber}
           onChange={(e) => setNewTicketNumber(e.target.value)}
           placeholder="New ticket number"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded mb-2"
         />
         <button
           onClick={addCustomTicket}
-          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           disabled={!selectedAmount}
         >
           Add Custom Ticket
         </button>
       </div>
+
+      {selectedAmount && (
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-2">Ticket List:</h3>
+          <ul className="space-y-2">
+            {localTicketLists[selectedAmount].map((ticket) => (
+              <li
+                key={ticket}
+                className="flex justify-between items-center bg-gray-100 p-2 rounded"
+              >
+                <span>{ticket}</span>
+                <button
+                  onClick={() => deleteTicket(ticket)}
+                  className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {selectedTicket && (
         <div className="mb-4">
@@ -246,23 +294,24 @@ const LotteryManagement: React.FC = () => {
         </div>
       )}
 
-      {Object.entries(localSubmittedData).map(([amount, tickets]) => (
-        <div key={amount} className="mt-4">
-          <h3 className="text-xl font-semibold">{amount} Tickets</h3>
-          {Object.entries(tickets).map(([ticket, data]) => (
-            <div
-              key={`${amount}-${ticket}`}
-              className="p-2 border rounded mb-2"
-            >
-              <p>Ticket: {ticket}</p>
-              <p>Open: {data.open}</p>
-              <p>Close: {data.close}</p>
-              <p>Total Sold: {data.totalSold}</p>
-              <p>Total: ${data.total}</p>
-            </div>
-          ))}
-        </div>
-      ))}
+      {/* Display submitted data */}
+      <div className="mt-8">
+        <h3 className="text-xl font-semibold mb-4">Submitted Data:</h3>
+        {Object.entries(lotteryData).map(([amount, data]) => (
+          <div key={amount} className="mb-4">
+            <h4 className="text-lg font-semibold">{amount} Tickets</h4>
+            {Object.entries(data.tickets).map(([ticket, ticketData]) => (
+              <div key={ticket} className="p-2 border rounded mb-2">
+                <p>Ticket: {ticket}</p>
+                <p>Open: {ticketData.open}</p>
+                <p>Close: {ticketData.close}</p>
+                <p>Total Sold: {ticketData.totalSold}</p>
+                <p>Total: ${ticketData.total}</p>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -458,7 +507,6 @@ const ViewData: React.FC = () => {
                       {Object.entries(monthData).map(([day, dayData]) => (
                         <div key={day} className="border p-2 text-center">
                           <div className="font-bold">{day}</div>
-                          <div>Inventory Stock: {dayData.inventoryStock}</div>
                           <div>Opening Stock: {dayData.openingStock}</div>
                           <div>Today's Sale: {dayData.todaySale}</div>
                           <div>New Stock: {dayData.newStock}</div>
@@ -524,7 +572,6 @@ const Dashboard: React.FC = () => {
             fuelType,
             month,
             day,
-            dayData.inventoryStock,
             dayData.openingStock,
             dayData.todaySale,
             dayData.newStock,

@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
 import "./Components.css";
 
+interface CustomField {
+  [key: string]: string;
+}
+
 const SalesManagement: React.FC = () => {
   const {
     calculateLotterySubtotal,
@@ -11,40 +15,69 @@ const SalesManagement: React.FC = () => {
   } = useGasStation();
   const [newFieldName, setNewFieldName] = useState("");
   const [total, setTotal] = useState(0);
+  const [localSalesData, setLocalSalesData] = useState(salesManagementData);
+  const [customFields, setCustomFields] = useState<CustomField>({});
+
+  const defaultFields = [
+    "gasSales",
+    "taxGrocerySales",
+    "nonTaxGrocerySales",
+    "deliSales",
+    "lottoSales",
+    "lotterySales",
+    "salesTaxSales",
+    "groceryPurchaseSales",
+    "paidIn",
+    "cashIn",
+  ];
+
+  useEffect(() => {
+    setLocalSalesData(salesManagementData);
+  }, [salesManagementData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    updateSalesManagementData({ [name]: value });
+    if (defaultFields.includes(name)) {
+      setLocalSalesData((prev) => ({ ...prev, [name]: value }));
+      updateSalesManagementData({ [name]: value });
+    } else {
+      setCustomFields((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmitAll = () => {
+    const allData = { ...localSalesData, ...customFields };
     updateAllData({
-      salesManagement: {
-        ...salesManagementData,
-      },
+      salesManagement: allData,
     });
+    updateSalesManagementData(allData);
   };
 
   const handleAddExtraField = () => {
-    if (
-      newFieldName &&
-      !salesManagementData.hasOwnProperty(newFieldName.toLowerCase())
-    ) {
+    if (newFieldName && !(newFieldName.toLowerCase() in customFields)) {
       const formattedFieldName =
         newFieldName.charAt(0).toLowerCase() + newFieldName.slice(1);
-      updateSalesManagementData({ [formattedFieldName]: "" });
+      setCustomFields((prev) => ({ ...prev, [formattedFieldName]: "" }));
       setNewFieldName("");
     }
   };
 
+  const handleDeleteField = (fieldName: string) => {
+    setCustomFields((prev) => {
+      const updated = { ...prev };
+      delete updated[fieldName];
+      return updated;
+    });
+  };
+
   useEffect(() => {
     const calculatedTotal =
-      Object.values(salesManagementData).reduce(
+      Object.values({ ...localSalesData, ...customFields }).reduce(
         (sum, value) => sum + (parseFloat(value) || 0),
         0
       ) + calculateLotterySubtotal();
     setTotal(calculatedTotal);
-  }, [salesManagementData, calculateLotterySubtotal]);
+  }, [localSalesData, customFields, calculateLotterySubtotal]);
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
@@ -52,7 +85,7 @@ const SalesManagement: React.FC = () => {
         Sales Management
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {Object.entries(salesManagementData).map(([key, value]) => (
+        {Object.entries(localSalesData).map(([key, value]) => (
           <div key={key} className="flex flex-col">
             <label className="mb-1 text-sm font-medium text-gray-700">
               {key
@@ -64,10 +97,36 @@ const SalesManagement: React.FC = () => {
               name={key}
               value={value}
               onChange={handleInputChange}
-              className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               step="0.01"
               min="0"
             />
+          </div>
+        ))}
+        {Object.entries(customFields).map(([key, value]) => (
+          <div key={key} className="flex flex-col">
+            <label className="mb-1 text-sm font-medium text-gray-700">
+              {key
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase())}
+            </label>
+            <div className="flex">
+              <input
+                type="number"
+                name={key}
+                value={value}
+                onChange={handleInputChange}
+                className="flex-grow border rounded-l p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                step="0.01"
+                min="0"
+              />
+              <button
+                onClick={() => handleDeleteField(key)}
+                className="bg-red-500 text-white px-2 py-1 rounded-r hover:bg-red-600 transition duration-300"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>

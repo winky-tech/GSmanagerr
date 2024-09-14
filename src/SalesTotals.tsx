@@ -2,26 +2,38 @@ import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
 import "./Components.css";
 
+interface SalesTotalsData {
+  gas: string;
+  lotto: string;
+  lottery: string;
+  taxGrocery: string;
+  nontaxGrocery: string;
+  deli: string;
+  salesTax: string;
+  groceryPurchase: string;
+  [key: string]: string;
+}
+
+interface CustomField {
+  [key: string]: string;
+}
+
 const SalesTotals: React.FC = () => {
   const {
     salesManagementData,
     lotterySubtotal,
     salesTotalsData,
+    updateAllData,
     updateSalesTotalsData,
   } = useGasStation();
-  const [values, setValues] = useState({
-    gas: "",
-    lotto: "",
-    taxGrocery: "",
-    nontaxGrocery: "",
-    deli: "",
-    salesTax: "",
-    groceryPurchase: "",
-  });
+  const [newFieldName, setNewFieldName] = useState("");
+  const [localSalesData, setLocalSalesData] = useState(salesTotalsData);
 
-  const [totals, setTotal] = useState({
+  const [customFields, setCustomFields] = useState<CustomField>({});
+  const [totals, setTotals] = useState({
     gasTotal: 0,
     lottoTotal: 0,
+    lotteryTotal: 0,
     taxGroceryTotal: 0,
     nontaxGroceryTotal: 0,
     deliTotal: 0,
@@ -29,58 +41,105 @@ const SalesTotals: React.FC = () => {
     groceryPurchaseTotal: 0,
   });
 
+  const defaultFields = [
+    "gas",
+    "lottery",
+    "lotto",
+    "taxGrocery",
+    "nontaxGrocery",
+    "deli",
+    "salesTax",
+    "groceryPurchase",
+  ];
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    updateSalesTotalsData({ [name]: value });
-    setValues((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (defaultFields.includes(name)) {
+      setLocalSalesData((prev) => ({ ...prev, [name]: value }));
+      updateSalesTotalsData({ [name]: value });
+    } else {
+      setCustomFields((prev) => ({ ...prev, [name]: value }));
+    }
   };
-
-  const { updateAllData } = useGasStation();
 
   const handleSubmitAll = () => {
     updateAllData({
-      salesTotals: {
-        ...values,
-      },
+      salesTotals: salesTotalsData,
+    });
+  };
+
+  const handleAddExtraField = () => {
+    if (newFieldName && !(newFieldName.toLowerCase() in customFields)) {
+      const formattedFieldName =
+        newFieldName.charAt(0).toLowerCase() + newFieldName.slice(1);
+      setCustomFields((prev) => ({ ...prev, [formattedFieldName]: "" }));
+      setNewFieldName("");
+    }
+  };
+
+  const handleDeleteField = (fieldName: string) => {
+    setCustomFields((prev) => {
+      const updated = { ...prev };
+      delete updated[fieldName];
+      return updated;
     });
   };
 
   useEffect(() => {
-    setTotal({
-      gasTotal:
-        parseFloat(values.gas || "0") +
-        (parseFloat(salesManagementData.gasSales) || 0),
-      lottoTotal:
-        parseFloat(values.lotto || "0") +
-        (parseFloat(salesManagementData.lottoSales) || 0) +
-        parseFloat(String(lotterySubtotal) || "0"),
-      taxGroceryTotal:
-        parseFloat(values.taxGrocery || "0") +
-        (parseFloat(salesManagementData.taxGrocerySales) || 0),
-      nontaxGroceryTotal:
-        parseFloat(values.nontaxGrocery || "0") +
-        (parseFloat(salesManagementData.nonTaxGrocerySales) || 0),
-      deliTotal:
-        parseFloat(values.deli || "0") +
-        (parseFloat(salesManagementData.deliSales) || 0),
-      salesTaxTotal:
-        parseFloat(values.salesTax || "0") +
-        (parseFloat(salesManagementData.salesTaxSales) || 0),
-      groceryPurchaseTotal:
-        parseFloat(values.groceryPurchase || "0") +
-        (parseFloat(salesManagementData.groceryPurchaseSales) || 0),
+    const calculateTotal = (
+      salesTotalValue: string,
+      salesManagementValue: string,
+      additionalValue: string = "0"
+    ) => {
+      return (
+        parseFloat(salesTotalValue || "0") +
+        parseFloat(salesManagementValue || "0") +
+        parseFloat(additionalValue || "0")
+      );
+    };
+
+    setTotals({
+      gasTotal: calculateTotal(
+        salesTotalsData.gas,
+        salesManagementData.gasSales
+      ),
+      lottoTotal: calculateTotal(
+        salesTotalsData.lotto,
+        salesManagementData.lottoSales,
+        lotterySubtotal
+      ),
+      lotteryTotal: calculateTotal(
+        salesTotalsData.lottery,
+        salesManagementData.lotterySales,
+        lotterySubtotal
+      ),
+      taxGroceryTotal: calculateTotal(
+        salesTotalsData.taxGrocery,
+        salesManagementData.taxGrocerySales
+      ),
+      nontaxGroceryTotal: calculateTotal(
+        salesTotalsData.nontaxGrocery,
+        salesManagementData.nonTaxGrocerySales
+      ),
+      deliTotal: calculateTotal(
+        salesTotalsData.deli,
+        salesManagementData.deliSales
+      ),
+      salesTaxTotal: calculateTotal(
+        salesTotalsData.salesTax,
+        salesManagementData.salesTaxSales
+      ),
+      groceryPurchaseTotal: calculateTotal(
+        salesTotalsData.groceryPurchase,
+        salesManagementData.groceryPurchaseSales
+      ),
     });
-  }, [values, salesManagementData, lotterySubtotal]);
+  }, [salesTotalsData, salesManagementData, lotterySubtotal]);
 
   const handleClearAllData = () => {
-    const clearedValues = Object.fromEntries(
-      Object.keys(values).map((key) => [key, ""])
-    ) as typeof values;
-
-    setValues(clearedValues);
+    const clearedValues: SalesTotalsData = Object.fromEntries(
+      Object.keys(salesTotalsData).map((key) => [key, ""])
+    ) as SalesTotalsData;
     updateSalesTotalsData(clearedValues);
   };
 
@@ -88,7 +147,7 @@ const SalesTotals: React.FC = () => {
     <div className="p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Sales Totals</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {Object.entries(salesTotalsData).map(([key, value]) => (
+        {Object.entries(localSalesData).map(([key, value]) => (
           <div key={key} className="flex flex-col">
             <label className="mb-1 text-sm font-medium text-gray-700">
               {key
@@ -100,12 +159,53 @@ const SalesTotals: React.FC = () => {
               name={key}
               value={value}
               onChange={handleInputChange}
-              className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               step="0.01"
               min="0"
             />
           </div>
         ))}
+        {Object.entries(customFields).map(([key, value]) => (
+          <div key={key} className="flex flex-col">
+            <label className="mb-1 text-sm font-medium text-gray-700">
+              {key
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase())}
+            </label>
+            <div className="flex">
+              <input
+                type="number"
+                name={key}
+                value={value}
+                onChange={handleInputChange}
+                className="flex-grow border rounded-l p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                step="0.01"
+                min="0"
+              />
+              <button
+                onClick={() => handleDeleteField(key)}
+                className="bg-red-500 text-white px-2 py-1 rounded-r hover:bg-red-600 transition duration-300"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+        <div className="mt-6 flex space-x-4">
+          <input
+            type="text"
+            value={newFieldName}
+            onChange={(e) => setNewFieldName(e.target.value)}
+            placeholder="New field name"
+            className="flex-grow border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+          <button
+            onClick={handleAddExtraField}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300"
+          >
+            Add Extra Field
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         {Object.entries(totals).map(([key, value]) => (
@@ -129,7 +229,7 @@ const SalesTotals: React.FC = () => {
           onClick={handleSubmitAll}
           className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition duration-300"
         >
-          Submit All Sales Management Data
+          Submit All Sales Totals Data
         </button>
         <button
           onClick={handleClearAllData}
