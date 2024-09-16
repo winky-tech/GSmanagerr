@@ -3,11 +3,11 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 type FuelType = "gas" | "diesel";
 
 interface DailyData {
-  inventoryStock: string;
   openingStock: string;
   todaySale: string;
   newStock: string;
   monthlySale: string;
+  cumulativeMonthlySale: string;
   [key: number]: any;
 }
 
@@ -55,6 +55,7 @@ interface SalesManagementData {
   nonTaxGrocerySales: string;
   deliSales: string;
   lottoSales: string;
+  lotterySales: string;
   salesTaxSales: string;
   groceryPurchaseSales: string;
   paidIn: string;
@@ -64,6 +65,7 @@ interface SalesManagementData {
 interface SalesTotalsData {
   gas: string;
   lotto: string;
+  lottery: string;
   taxGrocery: string;
   nontaxGrocery: string;
   deli: string;
@@ -159,6 +161,7 @@ export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
       nonTaxGrocerySales: "",
       deliSales: "",
       lottoSales: "",
+      lotterySales: "",
       salesTaxSales: "",
       groceryPurchaseSales: "",
       paidIn: "",
@@ -168,6 +171,7 @@ export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
   const [salesTotalsData, setSalesTotalsData] = useState<SalesTotalsData>({
     gas: "",
     lotto: "",
+    lottery: "",
     taxGrocery: "",
     nontaxGrocery: "",
     deli: "",

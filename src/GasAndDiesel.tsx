@@ -1,15 +1,15 @@
-import './Components.css';
+import "./Components.css";
 import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
 
 type FuelType = "gas" | "diesel";
 
 interface DailyData {
-  inventoryStock: string;
   openingStock: string;
   todaySale: string;
   newStock: string;
   monthlySale: string;
+  cumulativeMonthlySale: string;
   [key: number]: any;
 }
 
@@ -33,11 +33,11 @@ const GasAndDiesel: React.FC = () => {
   const [fuelType, setFuelType] = useState<FuelType | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [currentDayData, setCurrentDayData] = useState<DailyData>({
-    inventoryStock: "",
     openingStock: "",
     todaySale: "",
     newStock: "",
     monthlySale: "",
+    cumulativeMonthlySale: "",
   });
   const [monthlySale, setMonthlySale] = useState("");
 
@@ -57,20 +57,20 @@ const GasAndDiesel: React.FC = () => {
           setCurrentDayData(savedDayData);
         } else {
           setCurrentDayData({
-            inventoryStock: "",
             openingStock: "",
             todaySale: "",
             newStock: "",
             monthlySale: "",
+            cumulativeMonthlySale: "",
           });
         }
       } else {
         setCurrentDayData({
-          inventoryStock: "",
           openingStock: "",
           todaySale: "",
           newStock: "",
           monthlySale: "",
+          cumulativeMonthlySale: "",
         });
       }
     }
@@ -99,19 +99,36 @@ const GasAndDiesel: React.FC = () => {
   const handleSubmit = () => {
     if (fuelType) {
       const currentDay = new Date().getDate();
+      const currentMonth = selectedMonth + 1;
+      const savedMonthData = fuelData[fuelType][currentMonth] || {};
+
+      // Calculate cumulative monthly sale
+      let cumulativeSale = 0;
+      for (let i = 1; i <= currentDay; i++) {
+        if (savedMonthData[i] && savedMonthData[i].monthlySale) {
+          cumulativeSale += parseFloat(savedMonthData[i].monthlySale) || 0;
+        }
+      }
+      cumulativeSale += parseFloat(monthlySale) || 0;
+
       const updatedData = {
         ...currentDayData,
         monthlySale: monthlySale,
+        cumulativeMonthlySale: cumulativeSale.toFixed(2),
         [currentDay]: {
           ...currentDayData,
           monthlySale: monthlySale,
+          cumulativeMonthlySale: cumulativeSale.toFixed(2),
         },
       };
-      updateFuelData(fuelType, selectedMonth + 1, currentDay, updatedData);
-      updateViewData(fuelType, selectedMonth + 1, {
+
+      updateFuelData(fuelType, currentMonth, currentDay, updatedData);
+      updateViewData(fuelType, currentMonth, {
+        ...savedMonthData,
         [currentDay]: updatedData,
       });
       setCurrentDayData(updatedData);
+      setMonthlySale("");
     }
   };
 
@@ -134,7 +151,6 @@ const GasAndDiesel: React.FC = () => {
     const newStock = parseFloat(currentDayData.newStock) || 0;
     return (opening - sale + newStock).toFixed(2);
   };
-
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Gas and Diesel</h2>
@@ -166,7 +182,9 @@ const GasAndDiesel: React.FC = () => {
             {fuelType.charAt(0).toUpperCase() + fuelType.slice(1)}
           </h3>
           <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-gray-700">Select Month:</label>
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              Select Month:
+            </label>
             <select
               value={selectedMonth}
               onChange={handleMonthChange}
@@ -181,17 +199,9 @@ const GasAndDiesel: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">Inventory Stock:</label>
-              <input
-                type="number"
-                name="inventoryStock"
-                value={currentDayData.inventoryStock}
-                onChange={handleInputChange}
-                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">Opening Stock:</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Opening Stock:
+              </label>
               <input
                 type="number"
                 name="openingStock"
@@ -201,7 +211,9 @@ const GasAndDiesel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">Today's Sale:</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Today's Sale:
+              </label>
               <input
                 type="number"
                 name="todaySale"
@@ -211,7 +223,9 @@ const GasAndDiesel: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">New Stock:</label>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                New Stock:
+              </label>
               <input
                 type="number"
                 name="newStock"
@@ -222,7 +236,9 @@ const GasAndDiesel: React.FC = () => {
             </div>
           </div>
           <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-gray-700">Monthly Sale:</label>
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              Monthly Sale:
+            </label>
             <div className="flex space-x-4">
               <input
                 type="number"
@@ -239,12 +255,14 @@ const GasAndDiesel: React.FC = () => {
             </div>
           </div>
           <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-gray-700">Total:</label>
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              Total:
+            </label>
             <input
               type="text"
               value={calculateTotal()}
               readOnly
-              className="w-full border rounded p-2 bg-gray-100"
+              className="w-full border rounded p-2 bg-black-100"
             />
           </div>
           <button
@@ -264,7 +282,9 @@ const GasAndDiesel: React.FC = () => {
                 }`}
               >
                 <div className="font-bold text-gray-700">{day}</div>
-                <div className="text-sm text-gray-600">{currentDayData[day]?.monthlySale || ""}</div>
+                <div className="text-sm text-gray-600">
+                  {currentDayData[day]?.monthlySale || ""}
+                </div>
               </div>
             ))}
           </div>

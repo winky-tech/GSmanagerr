@@ -16,7 +16,7 @@ html {
 
 .dashboard h1 {
   background-color: #4a90e2;
-  color: white;
+  color: rgb(255, 255, 255);
   padding: 1rem;
   margin: 0;
   text-align: center;
@@ -31,7 +31,7 @@ html {
 
 .dashboard-sidebar {
   width: 200px;
-  background-color: #f0f2f5;
+  background-color: #1f1c1c;
   padding: 1rem;
   overflow-y: auto;
   height: calc(100vh - 60px); /* Adjust 60px based on your header height */
@@ -46,7 +46,7 @@ html {
 
 .dashboard button {
   background-color: #4a90e2;
-  color: white;
+  color: rgb(255, 255, 255);
   border: none;
   padding: 10px 15px;
   margin: 5px 0;
