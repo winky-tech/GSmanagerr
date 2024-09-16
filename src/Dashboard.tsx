@@ -58,42 +58,41 @@ const LotteryManagement: React.FC = () => {
   const [localTicketLists, setLocalTicketLists] = useState<{
     [key: string]: string[];
   }>({
-    $1: ["1544", "7026", "1536"],
-    $2: ["1510", "1541", "7027", "1594", "1537", "1530", "1533", "1545"],
-    $3: ["1531", "1516", "1497"],
+    $1: ["1565", "1570", "1563"],
+    $2: ["1571", "1566", "5057", "1556", "1297", "1530", "1560"],
+    $3: ["1564", "1516", "1497"],
     $5: [
-      "7023",
+      "1561",
       "5054",
       "1514",
       "1499",
-      "1511",
+      "1557",
       "1521",
-      "1522",
+      "1567",
       "7020",
-      "5052",
+      "1534",
       "1524",
       "1527",
-      "1534",
-      "1538",
-      "1542",
-      "1546",
+      "5058",
+      "5059",
     ],
     $10: [
-      "1547",
-      "7025",
-      "1528",
+      "1572",
+      "1572",
       "5053",
-      "1508",
-      "1508",
-      "5028",
+      "1550",
+      "1550",
+      "1547",
       "1454",
-      "1512",
-      "5049",
+      "1558",
       "1535",
+      "1554",
+      "1568",
+      "1528",
     ],
-    $20: ["1543", "1501", "1513", "1457", "1539"],
+    $20: ["1562", "1501", "1543", "1539", "1569", "1569"],
     $30: ["5048"],
-    $50: ["1529", "1529"],
+    $50: ["1529", "1555", "1555"],
   });
 
   const [openNumbers, setOpenNumbers] = useState<{
@@ -280,7 +279,7 @@ const LotteryManagement: React.FC = () => {
             {localTicketLists[selectedAmount].map((ticket) => (
               <li
                 key={ticket}
-                className="flex justify-between items-center bg-gray-100 p-2 rounded"
+                className="flex justify-between items-center bg-black-50 p-2 rounded"
               >
                 <span>{ticket}</span>
                 <button
@@ -555,14 +554,110 @@ const Dashboard: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [user, setUser] = useState<string | null>(null);
 
-  const { lotteryData, fuelData, allData, updateLotteryAbsTotal } =
-    useGasStation();
+  const {
+    lotteryData,
+    fuelData,
+    allData,
+    updateLotteryAbsTotal,
+    calculateLotterySubtotal,
+  } = useGasStation();
 
   useEffect(() => {
     Object.keys(lotteryData).forEach((amount) => updateLotteryAbsTotal(amount));
   }, [lotteryData, updateLotteryAbsTotal]);
 
-  const handleDownload = () => {
+  const handleDownloadLotteryCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    // Add header
+    csvContent += "Amount,Ticket Number,Open,Close,Total Sold,Total\n";
+
+    // Add lottery data
+    Object.entries(lotteryData).forEach(([amount, data]) => {
+      Object.entries(data.tickets).forEach(([ticket, ticketData]) => {
+        csvContent += `${amount},${ticket},${ticketData.open},${
+          ticketData.close
+        },${Math.abs(ticketData.totalSold)},${Math.abs(
+          ticketData.total
+        ).toFixed(2)}\n`;
+      });
+      // Add ABS Total for each amount
+      csvContent += `${amount},ABS Total,,,,${data.absTotal.toFixed(2)}\n`;
+      csvContent += "\n"; // Add a blank line between amounts
+    });
+
+    // Add Subtotal
+    csvContent += `Lottery Subtotal,,,,,${calculateLotterySubtotal().toFixed(
+      2
+    )}\n`;
+
+    // Create a download link and trigger the download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "lottery_data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadLotteryWord = () => {
+    let content = `<html xmlns:w="urn:schemas-microsoft-com:office:word">
+      <head>
+        <meta charset="utf-8">
+        <title>Lottery Data</title>
+      </head>
+      <body>
+        <h1>Lottery Data</h1>`;
+
+    Object.entries(lotteryData).forEach(([amount, data]) => {
+      content += `
+            <h2>${amount} Tickets</h2>
+            <table border="1" style="border-collapse: collapse;">
+              <tr>
+                <th>Ticket Number</th>
+                <th>Open</th>
+                <th>Close</th>
+                <th>Total Sold</th>
+                <th>Total</th>
+              </tr>`;
+
+      Object.entries(data.tickets).forEach(([ticket, ticketData]) => {
+        content += `
+                  <tr>
+                    <td>${ticket}</td>
+                    <td>${ticketData.open}</td>
+                    <td>${ticketData.close}</td>
+                    <td>${Math.abs(ticketData.totalSold)}</td>
+                    <td>$${Math.abs(ticketData.total).toFixed(2)}</td>
+                  </tr>`;
+      });
+
+      // Add ABS Total for each amount
+      content += `
+   <tr>
+     <td colspan="4"><strong>ABS Total</strong></td>
+     <td><strong>$${data.absTotal.toFixed(2)}</strong></td>
+   </tr>
+ </table>`;
+    });
+
+    // Add Subtotal
+    content += `
+<h2>Lottery Subtotal</h2>
+<p><strong>$${calculateLotterySubtotal().toFixed(2)}</strong></p>
+</body>
+</html>`;
+
+    const blob = new Blob([content], { type: "application/msword" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "lottery_data.doc";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const handleDownloadRestCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
 
     // Helper function to add a section to the CSV
@@ -573,51 +668,6 @@ const Dashboard: React.FC = () => {
       });
       csvContent += "\n";
     };
-
-    // Add Lottery Management Data
-    const lotteryRows = Object.entries(lotteryData).flatMap(
-      ([amount, tickets]) =>
-        Object.entries(tickets).map(([ticket, data]) => [
-          amount,
-          ticket,
-          ...(typeof data === "object" && "open" in data
-            ? [data.open, data.close, data.totalSold, data.total]
-            : []),
-        ])
-    );
-    addSection("Lottery Management Data", [
-      ["Amount", "Ticket", "Open", "Close", "Total Sold", "Total"],
-      ...lotteryRows,
-    ]);
-
-    // Add Gas and Diesel Data
-    const fuelRows = ["gas", "diesel"].flatMap((fuelType) =>
-      Object.entries(fuelData[fuelType as keyof typeof fuelData]).flatMap(
-        ([month, monthData]) =>
-          Object.entries(monthData).map(([day, dayData]) => [
-            fuelType,
-            month,
-            day,
-            dayData.openingStock,
-            dayData.todaySale,
-            dayData.newStock,
-            dayData.monthlySale,
-          ])
-      )
-    );
-    addSection("Gas and Diesel Data", [
-      [
-        "Fuel Type",
-        "Month",
-        "Day",
-        "Inventory Stock",
-        "Opening Stock",
-        "Today's Sale",
-        "New Stock",
-        "Monthly Sale",
-      ],
-      ...fuelRows,
-    ]);
 
     // Add Sales Management Data
     const salesManagementRows = Object.entries(allData.salesManagement).map(
@@ -671,6 +721,34 @@ const Dashboard: React.FC = () => {
       ...inHandCalcRows,
     ]);
 
+    // Add Fuel Data
+    const fuelRows = ["gas", "diesel"].flatMap((fuelType) =>
+      Object.entries(fuelData[fuelType as keyof typeof fuelData]).flatMap(
+        ([month, monthData]) =>
+          Object.entries(monthData).map(([day, dayData]) => [
+            fuelType,
+            month,
+            day,
+            dayData.openingStock,
+            dayData.todaySale,
+            dayData.newStock,
+            dayData.monthlySale,
+          ])
+      )
+    );
+    addSection("Fuel Data", [
+      [
+        "Fuel Type",
+        "Month",
+        "Day",
+        "Opening Stock",
+        "Today's Sale",
+        "New Stock",
+        "Monthly Sale",
+      ],
+      ...fuelRows,
+    ]);
+
     // Create a download link and trigger the download
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -680,6 +758,127 @@ const Dashboard: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleDownloadRestWord = () => {
+    let content = `<html xmlns:w="urn:schemas-microsoft-com:office:word">
+      <head>
+        <meta charset="utf-8">
+        <title>Gas Station Data</title>
+      </head>
+      <body>`;
+
+    // Helper function to add a section to the Word document
+    const addSection = (title: string, data: any[][]) => {
+      content += `<h2>${title}</h2>
+        <table border="1" style="border-collapse: collapse;">
+          <tr>
+            ${data[0].map((header) => `<th>${header}</th>`).join("")}
+          </tr>
+          ${data
+            .slice(1)
+            .map(
+              (row) =>
+                `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`
+            )
+            .join("")}
+        </table>`;
+    };
+
+    // Add Sales Management Data
+    const salesManagementRows = [
+      ["Field", "Value"],
+      ...Object.entries(allData.salesManagement).map(([key, value]) => [
+        key.replace(/([A-Z])/g, " $1").trim(),
+        value,
+      ]),
+    ];
+    addSection("Sales Management Data", salesManagementRows);
+
+    // Add Sales Totals Data
+    const salesTotalsRows = [
+      ["Field", "Value"],
+      ...Object.entries(allData.salesTotals)
+        .filter(([key]) => key !== "totals")
+        .map(([key, value]) => [key.replace(/([A-Z])/g, " $1").trim(), value]),
+    ];
+    if (allData.salesTotals.totals) {
+      salesTotalsRows.push(
+        ...Object.entries(allData.salesTotals.totals).map(([key, value]) => [
+          `Total ${key.replace(/([A-Z])/g, " $1").trim()}`,
+          value,
+        ])
+      );
+    }
+    addSection("Sales Totals Data", salesTotalsRows);
+
+    // Add Money Management Data
+    const moneyManagementRows = [
+      ["Field", "Value"],
+      ...Object.entries(allData.moneyManagement).map(([key, value]) => [
+        key.replace(/([A-Z])/g, " $1").trim(),
+        value,
+      ]),
+    ];
+    addSection("Money Management Data", moneyManagementRows);
+
+    // Add In Hand Calculations Data
+    const inHandCalcRows = [
+      ["Type", "Field", "Value"],
+      ...Object.entries(allData.inHandCalculations.cash).map(([key, value]) => [
+        "Cash",
+        key.replace(/([A-Z])/g, " $1").trim(),
+        value,
+      ]),
+      ...Object.entries(allData.inHandCalculations.check).map(
+        ([key, value]) => [
+          "Check",
+          key.replace(/([A-Z])/g, " $1").trim(),
+          value,
+        ]
+      ),
+    ];
+    addSection("In Hand Calculations Data", inHandCalcRows);
+
+    // Add Fuel Data
+    const fuelRows = [
+      [
+        "Fuel Type",
+        "Month",
+        "Day",
+        "Opening Stock",
+        "Today's Sale",
+        "New Stock",
+        "Monthly Sale",
+      ],
+      ...["gas", "diesel"].flatMap((fuelType) =>
+        Object.entries(fuelData[fuelType as keyof typeof fuelData]).flatMap(
+          ([month, monthData]) =>
+            Object.entries(monthData).map(([day, dayData]) => [
+              fuelType,
+              month,
+              day,
+              dayData.openingStock,
+              dayData.todaySale,
+              dayData.newStock,
+              dayData.monthlySale,
+            ])
+        )
+      ),
+    ];
+    addSection("Fuel Data", fuelRows);
+
+    content += `
+      </body>
+    </html>`;
+
+    const blob = new Blob([content], { type: "application/msword" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "gas_station_data.doc";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   const handleSignIn = (username: string) => {
     setUser(username);
   };
@@ -710,7 +909,27 @@ const Dashboard: React.FC = () => {
           {activeSection === "In Hand Calculations" && <InHandCalculations />}
           {activeSection === "View Data" && <ViewData />}
           {activeSection === "Download" && (
-            <button onClick={handleDownload}>Download CSV</button>
+            <div className="download-buttons">
+              <h2>Download Options</h2>
+              <div>
+                <h3>Lottery Information</h3>
+                <button onClick={handleDownloadLotteryCSV}>
+                  Download Lottery CSV
+                </button>
+                <button onClick={handleDownloadLotteryWord}>
+                  Download Lottery Word Document
+                </button>
+              </div>
+              <div>
+                <h3>Other Information</h3>
+                <button onClick={handleDownloadRestCSV}>
+                  Download Other Information CSV
+                </button>
+                <button onClick={handleDownloadRestWord}>
+                  Download Other Information Word Document
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </main>

@@ -219,7 +219,7 @@ const SalesTotals: React.FC = () => {
               type="number"
               value={value.toFixed(2)}
               readOnly
-              className="border rounded p-2 bg-gray-100"
+              className="border rounded p-2 bg-black-100"
             />
           </div>
         ))}

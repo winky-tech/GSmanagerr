@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useGasStation } from "./GasStationContext";
-import './Components.css';
+import "./Components.css";
 
 const InHandCalculations: React.FC = () => {
   const [activeSection, setActiveSection] = useState<"cash" | "check" | null>(
@@ -170,7 +170,7 @@ const InHandCalculations: React.FC = () => {
               type="text"
               value={calculateCashBalance()}
               readOnly
-              className="w-full border rounded p-2 bg-gray-100"
+              className="w-full border rounded p-2 bg-black-100"
             />
           </div>
         </div>
@@ -234,7 +234,7 @@ const InHandCalculations: React.FC = () => {
               type="text"
               value={calculateCheckBalance()}
               readOnly
-              className="w-full border rounded p-2 bg-gray-100"
+              className="w-full border rounded p-2 bg-black-100"
             />
           </div>
         </div>

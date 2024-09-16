@@ -9,6 +9,7 @@ interface DailyData {
   todaySale: string;
   newStock: string;
   monthlySale: string;
+  cumulativeMonthlySale: string;
   [key: number]: any;
 }
 
@@ -36,6 +37,7 @@ const GasAndDiesel: React.FC = () => {
     todaySale: "",
     newStock: "",
     monthlySale: "",
+    cumulativeMonthlySale: "",
   });
   const [monthlySale, setMonthlySale] = useState("");
 
@@ -59,6 +61,7 @@ const GasAndDiesel: React.FC = () => {
             todaySale: "",
             newStock: "",
             monthlySale: "",
+            cumulativeMonthlySale: "",
           });
         }
       } else {
@@ -67,6 +70,7 @@ const GasAndDiesel: React.FC = () => {
           todaySale: "",
           newStock: "",
           monthlySale: "",
+          cumulativeMonthlySale: "",
         });
       }
     }
@@ -95,19 +99,36 @@ const GasAndDiesel: React.FC = () => {
   const handleSubmit = () => {
     if (fuelType) {
       const currentDay = new Date().getDate();
+      const currentMonth = selectedMonth + 1;
+      const savedMonthData = fuelData[fuelType][currentMonth] || {};
+
+      // Calculate cumulative monthly sale
+      let cumulativeSale = 0;
+      for (let i = 1; i <= currentDay; i++) {
+        if (savedMonthData[i] && savedMonthData[i].monthlySale) {
+          cumulativeSale += parseFloat(savedMonthData[i].monthlySale) || 0;
+        }
+      }
+      cumulativeSale += parseFloat(monthlySale) || 0;
+
       const updatedData = {
         ...currentDayData,
         monthlySale: monthlySale,
+        cumulativeMonthlySale: cumulativeSale.toFixed(2),
         [currentDay]: {
           ...currentDayData,
           monthlySale: monthlySale,
+          cumulativeMonthlySale: cumulativeSale.toFixed(2),
         },
       };
-      updateFuelData(fuelType, selectedMonth + 1, currentDay, updatedData);
-      updateViewData(fuelType, selectedMonth + 1, {
+
+      updateFuelData(fuelType, currentMonth, currentDay, updatedData);
+      updateViewData(fuelType, currentMonth, {
+        ...savedMonthData,
         [currentDay]: updatedData,
       });
       setCurrentDayData(updatedData);
+      setMonthlySale("");
     }
   };
 
@@ -130,7 +151,6 @@ const GasAndDiesel: React.FC = () => {
     const newStock = parseFloat(currentDayData.newStock) || 0;
     return (opening - sale + newStock).toFixed(2);
   };
-
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Gas and Diesel</h2>
@@ -242,7 +262,7 @@ const GasAndDiesel: React.FC = () => {
               type="text"
               value={calculateTotal()}
               readOnly
-              className="w-full border rounded p-2 bg-gray-100"
+              className="w-full border rounded p-2 bg-black-100"
             />
           </div>
           <button

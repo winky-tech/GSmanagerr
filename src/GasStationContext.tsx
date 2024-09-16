@@ -7,6 +7,7 @@ interface DailyData {
   todaySale: string;
   newStock: string;
   monthlySale: string;
+  cumulativeMonthlySale: string;
   [key: number]: any;
 }
 
