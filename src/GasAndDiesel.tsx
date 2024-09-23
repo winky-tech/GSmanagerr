@@ -31,7 +31,7 @@ const months = [
 ];
 
 const GasAndDiesel: React.FC = () => {
-  const { fuelData, updateFuelData, updateViewData } = useGasStation();
+  const { updateFuelData, updateViewData } = useGasStation();
   const [fuelType, setFuelType] = useState<FuelType | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [currentDayData, setCurrentDayData] = useState<DailyData>({
