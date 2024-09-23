@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
 import "./Components.css";
 
+interface SalesManagementData {
+  [key: string]: string;
+}
+
 interface CustomField {
   [key: string]: string;
 }
@@ -15,8 +19,18 @@ const SalesManagement: React.FC = () => {
   } = useGasStation();
   const [newFieldName, setNewFieldName] = useState("");
   const [total, setTotal] = useState(0);
-  const [localSalesData, setLocalSalesData] = useState(salesManagementData);
-  const [customFields, setCustomFields] = useState<CustomField>({});
+  const [localSalesData, setLocalSalesData] = useState<SalesManagementData>(
+    () => {
+      const savedData = localStorage.getItem("salesManagementData");
+      return savedData ? JSON.parse(savedData) : salesManagementData;
+    }
+  );
+  const [customFields, setCustomFields] = useState<CustomField>(() => {
+    const savedCustomFields = localStorage.getItem(
+      "salesManagementCustomFields"
+    );
+    return savedCustomFields ? JSON.parse(savedCustomFields) : {};
+  });
 
   const defaultFields = [
     "gasSales",
@@ -32,8 +46,15 @@ const SalesManagement: React.FC = () => {
   ];
 
   useEffect(() => {
-    setLocalSalesData(salesManagementData);
-  }, [salesManagementData]);
+    localStorage.setItem("salesManagementData", JSON.stringify(localSalesData));
+  }, [localSalesData]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "salesManagementCustomFields",
+      JSON.stringify(customFields)
+    );
+  }, [customFields]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -51,6 +72,7 @@ const SalesManagement: React.FC = () => {
       salesManagement: allData,
     });
     updateSalesManagementData(allData);
+    localStorage.setItem("salesManagementAllData", JSON.stringify(allData));
   };
 
   const handleAddExtraField = () => {
@@ -73,11 +95,23 @@ const SalesManagement: React.FC = () => {
   useEffect(() => {
     const calculatedTotal =
       Object.values({ ...localSalesData, ...customFields }).reduce(
-        (sum, value) => sum + (parseFloat(value) || 0),
+        (sum: number, value: string) => sum + (parseFloat(value) || 0),
         0
       ) + calculateLotterySubtotal();
     setTotal(calculatedTotal);
   }, [localSalesData, customFields, calculateLotterySubtotal]);
+
+  const handleClearAllData = () => {
+    const clearedValues: SalesManagementData = Object.fromEntries(
+      defaultFields.map((key) => [key, ""])
+    );
+    setLocalSalesData(clearedValues);
+    setCustomFields({});
+    updateSalesManagementData(clearedValues);
+    localStorage.removeItem("salesManagementData");
+    localStorage.removeItem("salesManagementCustomFields");
+    localStorage.removeItem("salesManagementAllData");
+  };
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
@@ -154,6 +188,12 @@ const SalesManagement: React.FC = () => {
         className="mt-6 bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition duration-300"
       >
         Submit All Sales Management Data
+      </button>
+      <button
+        onClick={handleClearAllData}
+        className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300"
+      >
+        Clear All Data
       </button>
     </div>
   );

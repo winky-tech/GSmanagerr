@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 type FuelType = "gas" | "diesel";
 
@@ -8,7 +14,7 @@ interface DailyData {
   newStock: string;
   monthlySale: string;
   cumulativeMonthlySale: string;
-  [key: number]: any;
+  [key: string]: string; // Change this from number to string
 }
 
 interface AllData {
@@ -44,9 +50,13 @@ interface LotteryData {
   };
 }
 
+interface MonthlyData {
+  [day: number]: DailyData;
+}
+
 interface FuelData {
-  gas: { [month: number]: { [day: number]: DailyData } };
-  diesel: { [month: number]: { [day: number]: DailyData } };
+  gas: { [month: number]: MonthlyData };
+  diesel: { [month: number]: MonthlyData };
 }
 
 interface SalesManagementData {
@@ -105,8 +115,8 @@ interface GasStationContextType {
   salesTotalsData: SalesTotalsData;
   moneyManagementData: MoneyManagementData;
   viewData: {
-    gas: { [month: number]: { [day: number]: DailyData } };
-    diesel: { [month: number]: { [day: number]: DailyData } };
+    gas: { [month: number]: MonthlyData };
+    diesel: { [month: number]: MonthlyData };
   };
   updateFuelData: (
     fuelType: "gas" | "diesel",
@@ -120,10 +130,16 @@ interface GasStationContextType {
   updateViewData: (
     fuelType: FuelType,
     month: number,
-    data: { [day: number]: DailyData }
+    data: MonthlyData
   ) => void;
   lotterySubtotal: string; // Change this to string
   updateLotteryAbsTotal: (amount: string) => void;
+
+  user: string | null;
+  login: (username: string) => void;
+  logout: () => void;
+  clearAllData: () => void;
+  clearLotteryData: () => void;
 }
 
 const GasStationContext = createContext<GasStationContextType | undefined>(
@@ -133,65 +149,119 @@ const GasStationContext = createContext<GasStationContextType | undefined>(
 export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [allData, setAllData] = useState<AllData>({
-    salesManagement: {} as SalesManagementData,
-    salesTotals: {} as SalesTotalsData,
-    moneyManagement: {} as MoneyManagementData,
-    inHandCalculations: {
-      cash: {},
-      check: {},
-    },
+  const [allData, setAllData] = useState<AllData>(() => {
+    const savedData = localStorage.getItem("gasStationData");
+    return savedData
+      ? JSON.parse(savedData)
+      : {
+          salesManagement: {} as SalesManagementData,
+          salesTotals: {} as SalesTotalsData,
+          moneyManagement: {} as MoneyManagementData,
+          inHandCalculations: { cash: {}, check: {} },
+        };
   });
-  const [lotteryData, setLotteryData] = useState<LotteryData>({});
-  const [fuelData, setFuelData] = useState<FuelData>({
-    gas: {},
-    diesel: {},
+
+  const clearLotteryData = () => {
+    setLotteryData({});
+    localStorage.removeItem("lotteryData");
+  };
+
+  const [lotteryData, setLotteryData] = useState<LotteryData>(() => {
+    const savedLotteryData = localStorage.getItem("lotteryData");
+    return savedLotteryData ? JSON.parse(savedLotteryData) : {};
   });
+
+  const [fuelData, setFuelData] = useState<FuelData>(() => {
+    const savedFuelData = localStorage.getItem("fuelData");
+    return savedFuelData ? JSON.parse(savedFuelData) : { gas: {}, diesel: {} };
+  });
+
   const [viewData, setViewData] = useState<{
-    gas: { [month: number]: { [day: number]: DailyData } };
-    diesel: { [month: number]: { [day: number]: DailyData } };
+    gas: { [month: number]: MonthlyData };
+    diesel: { [month: number]: MonthlyData };
   }>({
     gas: {},
     diesel: {},
   });
-  const [salesManagementData, setSalesManagementData] =
-    useState<SalesManagementData>({
-      gasSales: "",
-      taxGrocerySales: "",
-      nonTaxGrocerySales: "",
-      deliSales: "",
-      lottoSales: "",
-      lotterySales: "",
-      salesTaxSales: "",
-      groceryPurchaseSales: "",
-      paidIn: "",
-      cashIn: "",
-    });
 
-  const [salesTotalsData, setSalesTotalsData] = useState<SalesTotalsData>({
-    gas: "",
-    lotto: "",
-    lottery: "",
-    taxGrocery: "",
-    nontaxGrocery: "",
-    deli: "",
-    salesTax: "",
-    groceryPurchase: "",
+  const [user, setUser] = useState<string | null>(() => {
+    return localStorage.getItem("user");
   });
-  const [moneyManagementData, setMoneyManagementData] =
-    useState<MoneyManagementData>({
-      creditDebit: "",
-      storeCredit: "",
-      groceryPurchaseSales: "",
-      lotteryPaidOut: "",
-      lottoPaidOut: "",
-      cashInRegister: "",
-      cash: "",
-      check: "",
-      ebt: "",
-      cashToATM: "",
+
+  useEffect(() => {
+    localStorage.setItem("gasStationData", JSON.stringify(allData));
+  }, [allData]);
+
+  useEffect(() => {
+    localStorage.setItem("lotteryData", JSON.stringify(lotteryData));
+  }, [lotteryData]);
+
+  useEffect(() => {
+    localStorage.setItem("fuelData", JSON.stringify(fuelData));
+  }, [fuelData]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", user);
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [user]);
+
+  const [salesManagementData, setSalesManagementData] =
+    useState<SalesManagementData>(() => {
+      const savedData = localStorage.getItem("salesManagementAllData");
+      return savedData
+        ? JSON.parse(savedData)
+        : {
+            gasSales: "",
+            taxGrocerySales: "",
+            nonTaxGrocerySales: "",
+            deliSales: "",
+            lottoSales: "",
+            lotterySales: "",
+            salesTaxSales: "",
+            groceryPurchaseSales: "",
+            paidIn: "",
+            cashIn: "",
+          };
     });
 
+  const [salesTotalsData, setSalesTotalsData] = useState<SalesTotalsData>(
+    () => {
+      const savedData = localStorage.getItem("salesTotalsData");
+      return savedData
+        ? JSON.parse(savedData)
+        : {
+            gas: "",
+            lotto: "",
+            lottery: "",
+            taxGrocery: "",
+            nontaxGrocery: "",
+            deli: "",
+            salesTax: "",
+            groceryPurchase: "",
+          };
+    }
+  );
+  const [moneyManagementData, setMoneyManagementData] =
+    useState<MoneyManagementData>(() => {
+      const savedData = localStorage.getItem("moneyManagementData");
+      return savedData
+        ? JSON.parse(savedData)
+        : {
+            creditDebit: "",
+            storeCredit: "",
+            groceryPurchaseSales: "",
+            lotteryPaidOut: "",
+            lottoPaidOut: "",
+            cashInRegister: "",
+            cash: "",
+            check: "",
+            ebt: "",
+            cashToATM: "",
+          };
+    });
   const [lotterySubtotal, setLotterySubtotal] = useState("0");
 
   const calculateTotalSold = (
@@ -273,45 +343,65 @@ export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
     day: number,
     data: DailyData
   ) => {
-    setFuelData((prev) => ({
-      ...prev,
-      [fuelType]: {
-        ...prev[fuelType],
-        [month]: {
-          ...prev[fuelType][month],
-          [day]: {
-            ...prev[fuelType][month]?.[day],
-            ...data,
+    setFuelData((prev) => {
+      const newData = {
+        ...prev,
+        [fuelType]: {
+          ...prev[fuelType],
+          [month]: {
+            ...prev[fuelType][month],
+            [day]: {
+              ...prev[fuelType][month]?.[day],
+              ...data,
+            },
           },
         },
-      },
-    }));
+      };
+      localStorage.setItem("fuelData", JSON.stringify(newData));
+      return newData;
+    });
   };
 
   const updateViewData = (
     fuelType: FuelType,
     month: number,
-    data: { [day: number]: DailyData }
+    data: MonthlyData
   ) => {
     setViewData((prev) => ({
       ...prev,
       [fuelType]: {
-        ...prev[fuelType as keyof typeof prev],
+        ...prev[fuelType],
         [month]: data,
       },
     }));
   };
 
+  useEffect(() => {
+    localStorage.setItem("salesTotalsData", JSON.stringify(salesTotalsData));
+  }, [salesTotalsData]);
+
   const updateSalesManagementData = (data: Partial<SalesManagementData>) => {
-    setSalesManagementData((prev) => ({ ...prev, ...data }));
+    setSalesManagementData((prev) => {
+      const updated = { ...prev, ...data };
+      localStorage.setItem("salesManagementAllData", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const updateSalesTotalsData = (data: Partial<SalesTotalsData>) => {
-    setSalesTotalsData((prev) => ({ ...prev, ...data }));
+    setSalesTotalsData((prev) => {
+      const updated = { ...prev, ...data };
+      localStorage.setItem("salesTotalsData", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const updateMoneyManagementData = (data: Partial<MoneyManagementData>) => {
-    setMoneyManagementData((prev) => ({ ...prev, ...data }));
+    setMoneyManagementData((prev) => {
+      const updated = { ...prev, ...data };
+      localStorage.setItem("moneyManagementData", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const updateAllData = (newData: Partial<AllData>) => {
@@ -320,6 +410,31 @@ export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
 
   const updateLotteryAbsTotal = (amount: string) => {
     setLotterySubtotal(amount);
+  };
+
+  const clearAllData = () => {
+    setAllData({
+      salesManagement: {} as SalesManagementData,
+      salesTotals: {} as SalesTotalsData,
+      moneyManagement: {} as MoneyManagementData,
+      inHandCalculations: { cash: {}, check: {} },
+    });
+    setLotteryData({});
+    setFuelData({ gas: {}, diesel: {} });
+    localStorage.removeItem("gasStationData");
+    localStorage.removeItem("lotteryData");
+    localStorage.removeItem("fuelData");
+  };
+
+  const login = (username: string) => {
+    setUser(username);
+    localStorage.setItem("user", username);
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("user");
+    clearAllData();
   };
 
   return (
@@ -342,6 +457,11 @@ export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
         lotterySubtotal,
         updateLotteryAbsTotal,
         calculateLotterySubtotal,
+        user,
+        login,
+        logout,
+        clearAllData,
+        clearLotteryData,
       }}
     >
       {children}

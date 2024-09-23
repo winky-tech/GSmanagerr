@@ -2,22 +2,44 @@ import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
 import "./Components.css";
 
+interface MoneyManagementValues {
+  creditDebit: string;
+  storeCredit: string;
+  groceryPurchaseSales: string;
+  lotteryPaidOut: string;
+  lottoPaidOut: string;
+  cashInRegister: string;
+  cash: string;
+  check: string;
+  ebt: string;
+  cashToATM: string;
+}
+
 const MoneyManagement: React.FC = () => {
-  const [values, setValues] = useState({
-    creditDebit: "",
-    storeCredit: "",
-    groceryPurchaseSales: "",
-    lotteryPaidOut: "",
-    lottoPaidOut: "",
-    cashInRegister: "",
-    cash: "",
-    check: "",
-    ebt: "",
-    cashToATM: "",
+  const [values, setValues] = useState<MoneyManagementValues>(() => {
+    const savedValues = localStorage.getItem("moneyManagementData");
+    return savedValues
+      ? JSON.parse(savedValues)
+      : {
+          creditDebit: "",
+          storeCredit: "",
+          groceryPurchaseSales: "",
+          lotteryPaidOut: "",
+          lottoPaidOut: "",
+          cashInRegister: "",
+          cash: "",
+          check: "",
+          ebt: "",
+          cashToATM: "",
+        };
   });
 
   const { moneyManagementData, updateMoneyManagementData } = useGasStation();
   const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    localStorage.setItem("moneyManagementData", JSON.stringify(values));
+  }, [values]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -46,12 +68,22 @@ const MoneyManagement: React.FC = () => {
   }, [values]);
 
   const handleClearAllData = () => {
-    const clearedValues = Object.fromEntries(
-      Object.keys(values).map((key) => [key, ""])
-    ) as typeof values;
+    const clearedValues: MoneyManagementValues = {
+      creditDebit: "",
+      storeCredit: "",
+      groceryPurchaseSales: "",
+      lotteryPaidOut: "",
+      lottoPaidOut: "",
+      cashInRegister: "",
+      cash: "",
+      check: "",
+      ebt: "",
+      cashToATM: "",
+    };
 
     setValues(clearedValues);
     updateMoneyManagementData(clearedValues);
+    localStorage.removeItem("moneyManagementData");
   };
 
   return (

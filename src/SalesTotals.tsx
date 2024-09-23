@@ -26,10 +26,14 @@ const SalesTotals: React.FC = () => {
     updateAllData,
     updateSalesTotalsData,
   } = useGasStation();
+  const [isLoading, setIsLoading] = useState(true);
   const [newFieldName, setNewFieldName] = useState("");
   const [localSalesData, setLocalSalesData] = useState(salesTotalsData);
 
-  const [customFields, setCustomFields] = useState<CustomField>({});
+  const [customFields, setCustomFields] = useState<CustomField>(() => {
+    const savedCustomFields = localStorage.getItem("customSalesTotalsFields");
+    return savedCustomFields ? JSON.parse(savedCustomFields) : {};
+  });
   const [totals, setTotals] = useState({
     gasTotal: 0,
     lottoTotal: 0,
@@ -64,7 +68,7 @@ const SalesTotals: React.FC = () => {
 
   const handleSubmitAll = () => {
     updateAllData({
-      salesTotals: salesTotalsData,
+      salesTotals: { ...localSalesData, ...customFields },
     });
   };
 
@@ -142,6 +146,31 @@ const SalesTotals: React.FC = () => {
     ) as SalesTotalsData;
     updateSalesTotalsData(clearedValues);
   };
+
+  useEffect(() => {
+    setLocalSalesData(salesTotalsData);
+    setIsLoading(false);
+  }, [salesTotalsData]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "customSalesTotalsFields",
+      JSON.stringify(customFields)
+    );
+  }, [customFields]);
+
+  useEffect(() => {
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading sales totals data...</div>;
+  }
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">

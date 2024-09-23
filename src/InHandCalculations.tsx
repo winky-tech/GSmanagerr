@@ -1,32 +1,67 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
 import "./Components.css";
+
+interface CashValues {
+  cashOnHand: string;
+  cashToBank: string;
+  cashFromStore: string;
+  extraCash: string;
+}
+
+interface CheckValues {
+  checkOnHand: string;
+  checkToBank: string;
+  checkFromStore: string;
+  instantBook: string;
+}
 
 const InHandCalculations: React.FC = () => {
   const [activeSection, setActiveSection] = useState<"cash" | "check" | null>(
     null
   );
-  const [cashValues, setCashValues] = useState({
-    cashOnHand: "",
-    cashToBank: "",
-    cashFromStore: "",
-    extraCash: "",
+  const [cashValues, setCashValues] = useState<CashValues>(() => {
+    const savedCashValues = localStorage.getItem("inHandCalculationsCash");
+    return savedCashValues
+      ? JSON.parse(savedCashValues)
+      : {
+          cashOnHand: "",
+          cashToBank: "",
+          cashFromStore: "",
+          extraCash: "",
+        };
   });
-  const [checkValues, setCheckValues] = useState({
-    checkOnHand: "",
-    checkToBank: "",
-    checkFromStore: "",
-    instantBook: "",
+  const [checkValues, setCheckValues] = useState<CheckValues>(() => {
+    const savedCheckValues = localStorage.getItem("inHandCalculationsCheck");
+    return savedCheckValues
+      ? JSON.parse(savedCheckValues)
+      : {
+          checkOnHand: "",
+          checkToBank: "",
+          checkFromStore: "",
+          instantBook: "",
+        };
   });
+
+  useEffect(() => {
+    localStorage.setItem("inHandCalculationsCash", JSON.stringify(cashValues));
+  }, [cashValues]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "inHandCalculationsCheck",
+      JSON.stringify(checkValues)
+    );
+  }, [checkValues]);
 
   const handleCashInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setCashValues((prev) => ({ ...prev, [name]: value }));
+    setCashValues((prev: CashValues) => ({ ...prev, [name]: value }));
   };
 
   const handleCheckInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setCheckValues((prev) => ({ ...prev, [name]: value }));
+    setCheckValues((prev: CheckValues) => ({ ...prev, [name]: value }));
   };
 
   const calculateCashBalance = () => {
@@ -51,7 +86,7 @@ const InHandCalculations: React.FC = () => {
   const { updateAllData } = useGasStation();
 
   const handleSubmitAll = () => {
-    updateAllData({
+    const data = {
       inHandCalculations: {
         cash: {
           ...cashValues,
@@ -62,17 +97,25 @@ const InHandCalculations: React.FC = () => {
           checkBalance: calculateCheckBalance(),
         },
       },
-    });
+    };
+    updateAllData(data);
+    localStorage.setItem("inHandCalculationsData", JSON.stringify(data));
   };
 
   const handleClearAllData = () => {
-    const clearedCashValues = Object.fromEntries(
-      Object.keys(cashValues).map((key) => [key, ""])
-    ) as typeof cashValues;
+    const clearedCashValues: CashValues = {
+      cashOnHand: "",
+      cashToBank: "",
+      cashFromStore: "",
+      extraCash: "",
+    };
 
-    const clearedCheckValues = Object.fromEntries(
-      Object.keys(checkValues).map((key) => [key, ""])
-    ) as typeof checkValues;
+    const clearedCheckValues: CheckValues = {
+      checkOnHand: "",
+      checkToBank: "",
+      checkFromStore: "",
+      instantBook: "",
+    };
 
     setCashValues(clearedCashValues);
     setCheckValues(clearedCheckValues);
@@ -82,6 +125,9 @@ const InHandCalculations: React.FC = () => {
         check: clearedCheckValues,
       },
     });
+    localStorage.removeItem('inHandCalculationsCash');
+    localStorage.removeItem('inHandCalculationsCheck');
+    localStorage.removeItem('inHandCalculationsData');
   };
 
   return (
