@@ -1,6 +1,8 @@
 import "./Components.css";
 import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 type FuelType = "gas" | "diesel";
 
@@ -15,25 +17,10 @@ interface DailyData {
 
 type MonthlyData = { [day: number]: DailyData };
 
-const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 const GasAndDiesel: React.FC = () => {
   const { updateFuelData, updateViewData } = useGasStation();
   const [fuelType, setFuelType] = useState<FuelType | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [currentDayData, setCurrentDayData] = useState<DailyData>({
     openingStock: "",
     todaySale: "",
@@ -43,8 +30,6 @@ const GasAndDiesel: React.FC = () => {
   });
   const [monthlySale, setMonthlySale] = useState("");
   const [monthlyData, setMonthlyData] = useState<MonthlyData>({});
-  const [editingDay, setEditingDay] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     loadSavedData();
@@ -54,25 +39,27 @@ const GasAndDiesel: React.FC = () => {
     const savedFuelType = localStorage.getItem(
       "selectedFuelType"
     ) as FuelType | null;
-    const savedMonth = localStorage.getItem("selectedMonth");
+    const savedDate = localStorage.getItem("selectedDate");
 
     if (savedFuelType) {
       setFuelType(savedFuelType);
-      if (savedMonth) {
-        const month = parseInt(savedMonth);
-        setSelectedMonth(month);
-        loadMonthlyData(savedFuelType, month);
+      if (savedDate) {
+        const date = new Date(savedDate);
+        setSelectedDate(date);
+        loadMonthlyData(savedFuelType, date.getMonth(), date.getFullYear());
       }
     }
   };
 
-  const loadMonthlyData = (type: FuelType, month: number) => {
+  const loadMonthlyData = (type: FuelType, month: number, year: number) => {
     const currentMonth = month + 1;
-    const savedData = localStorage.getItem(`fuelData_${type}_${currentMonth}`);
+    const savedData = localStorage.getItem(
+      `fuelData_${type}_${currentMonth}_${year}`
+    );
     if (savedData) {
       const parsedData: MonthlyData = JSON.parse(savedData);
       setMonthlyData(parsedData);
-      const currentDay = new Date().getDate();
+      const currentDay = selectedDate?.getDate() || new Date().getDate();
       if (parsedData[currentDay]) {
         setCurrentDayData(parsedData[currentDay]);
       }
@@ -80,12 +67,16 @@ const GasAndDiesel: React.FC = () => {
   };
 
   useEffect(() => {
-    if (fuelType) {
+    if (fuelType && selectedDate) {
       localStorage.setItem("selectedFuelType", fuelType);
-      localStorage.setItem("selectedMonth", selectedMonth.toString());
-      loadMonthlyData(fuelType, selectedMonth);
+      localStorage.setItem("selectedDate", selectedDate.toISOString());
+      loadMonthlyData(
+        fuelType,
+        selectedDate.getMonth(),
+        selectedDate.getFullYear()
+      );
     }
-  }, [fuelType, selectedMonth]);
+  }, [fuelType, selectedDate]);
 
   const handleFuelTypeSelect = (type: FuelType) => {
     setFuelType(type);
@@ -103,14 +94,15 @@ const GasAndDiesel: React.FC = () => {
     setMonthlySale(e.target.value);
   };
 
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedMonth(parseInt(e.target.value));
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
   };
 
   const handleSubmit = () => {
-    if (fuelType) {
-      const currentDay = new Date().getDate();
-      const currentMonth = selectedMonth + 1;
+    if (fuelType && selectedDate) {
+      const currentDay = selectedDate.getDate();
+      const currentMonth = selectedDate.getMonth() + 1;
+      const currentYear = selectedDate.getFullYear();
       const updatedMonthlyData: MonthlyData = { ...monthlyData };
 
       let cumulativeSale = 0;
@@ -137,15 +129,9 @@ const GasAndDiesel: React.FC = () => {
       setMonthlySale("");
 
       localStorage.setItem(
-        `fuelData_${fuelType}_${currentMonth}`,
+        `fuelData_${fuelType}_${currentMonth}_${currentYear}`,
         JSON.stringify(updatedMonthlyData)
       );
-    }
-  };
-
-  const handleFinalSubmit = () => {
-    if (fuelType) {
-      handleSubmit();
     }
   };
 
@@ -154,57 +140,6 @@ const GasAndDiesel: React.FC = () => {
     const sale = parseFloat(currentDayData.todaySale) || 0;
     const newStock = parseFloat(currentDayData.newStock) || 0;
     return (opening - sale + newStock).toFixed(2);
-  };
-
-  const getDaysInMonth = (month: number, year: number) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const daysInMonth = getDaysInMonth(selectedMonth, new Date().getFullYear());
-
-  const handleEdit = (day: number) => {
-    setEditingDay(day);
-    setEditValue(monthlyData[day]?.monthlySale || "");
-  };
-
-  const handleEditSubmit = () => {
-    if (editingDay && fuelType) {
-      const currentMonth = selectedMonth + 1;
-      const updatedMonthlyData: MonthlyData = { ...monthlyData };
-
-      // Create or update the data for the edited day
-      updatedMonthlyData[editingDay] = {
-        ...updatedMonthlyData[editingDay],
-        monthlySale: editValue,
-        openingStock: updatedMonthlyData[editingDay]?.openingStock || "",
-        todaySale: updatedMonthlyData[editingDay]?.todaySale || "",
-        newStock: updatedMonthlyData[editingDay]?.newStock || "",
-        cumulativeMonthlySale: "0", // This will be recalculated below
-      };
-
-      // Recalculate cumulative sales for all days
-      let cumulativeSale = 0;
-      for (let i = 1; i <= daysInMonth; i++) {
-        if (updatedMonthlyData[i] && updatedMonthlyData[i].monthlySale) {
-          cumulativeSale += parseFloat(updatedMonthlyData[i].monthlySale) || 0;
-          updatedMonthlyData[i] = {
-            ...updatedMonthlyData[i],
-            cumulativeMonthlySale: cumulativeSale.toFixed(2),
-          };
-        }
-      }
-
-      setMonthlyData(updatedMonthlyData);
-      updateViewData(fuelType, currentMonth, updatedMonthlyData);
-
-      localStorage.setItem(
-        `fuelData_${fuelType}_${currentMonth}`,
-        JSON.stringify(updatedMonthlyData)
-      );
-
-      setEditingDay(null);
-      setEditValue("");
-    }
   };
 
   return (
@@ -239,19 +174,14 @@ const GasAndDiesel: React.FC = () => {
           </h3>
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">
-              Select Month:
+              Select Date:
             </label>
-            <select
-              value={selectedMonth}
-              onChange={handleMonthChange}
-              className="border rounded p-2 w-full md:w-auto focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            >
-              {months.map((month, index) => (
-                <option key={month} value={index}>
-                  {month}
-                </option>
-              ))}
-            </select>
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              dateFormat="MMMM d, yyyy"
+              className="border rounded p-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
@@ -321,53 +251,19 @@ const GasAndDiesel: React.FC = () => {
               className="w-full border rounded p-2 bg-gray-100"
             />
           </div>
-          <button
-            onClick={handleFinalSubmit}
-            className="mb-6 px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300"
-          >
-            Submit All Data
-          </button>
-          <div className="grid grid-cols-7 gap-2">
-            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
-              <div
-                key={day}
-                className={`border p-2 text-center rounded ${
-                  monthlyData[day]?.monthlySale
-                    ? "bg-blue-100 border-blue-300"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <div className="font-bold text-gray-700">{day}</div>
-                {editingDay === day ? (
-                  <div>
-                    <input
-                      type="number"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="w-full p-1 mb-1 text-sm"
-                    />
-                    <button
-                      onClick={handleEditSubmit}
-                      className="bg-green-500 text-white px-2 py-1 rounded text-xs"
-                    >
-                      Save
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="text-sm text-gray-600">
-                      {monthlyData[day]?.cumulativeMonthlySale || ""}
-                    </div>
-                    <button
-                      onClick={() => handleEdit(day)}
-                      className="mt-1 bg-blue-500 text-white px-2 py-1 rounded text-xs"
-                    >
-                      {monthlyData[day]?.monthlySale ? "Edit" : "Add"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold mb-2">Monthly Summary</h4>
+            <p>
+              Date:{" "}
+              {selectedDate
+                ? selectedDate.toLocaleDateString()
+                : "No date selected"}
+            </p>
+            <p>Monthly Sale: {currentDayData.monthlySale || "N/A"}</p>
+            <p>
+              Cumulative Monthly Sale:{" "}
+              {currentDayData.cumulativeMonthlySale || "N/A"}
+            </p>
           </div>
         </div>
       )}
