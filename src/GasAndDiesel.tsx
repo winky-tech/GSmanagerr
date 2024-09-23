@@ -1,8 +1,6 @@
 import "./Components.css";
 import React, { useState, useEffect } from "react";
 import { useGasStation } from "./GasStationContext";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 
 type FuelType = "gas" | "diesel";
 
@@ -17,10 +15,26 @@ interface DailyData {
 
 type MonthlyData = { [day: number]: DailyData };
 
+const months = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 const GasAndDiesel: React.FC = () => {
   const { updateFuelData, updateViewData } = useGasStation();
   const [fuelType, setFuelType] = useState<FuelType | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [currentDayData, setCurrentDayData] = useState<DailyData>({
     openingStock: "",
     todaySale: "",
@@ -39,15 +53,18 @@ const GasAndDiesel: React.FC = () => {
     const savedFuelType = localStorage.getItem(
       "selectedFuelType"
     ) as FuelType | null;
-    const savedDate = localStorage.getItem("selectedDate");
+    const savedMonth = localStorage.getItem("selectedMonth");
+    const savedDay = localStorage.getItem("selectedDay");
 
     if (savedFuelType) {
       setFuelType(savedFuelType);
-      if (savedDate) {
-        const date = new Date(savedDate);
-        setSelectedDate(date);
-        loadMonthlyData(savedFuelType, date.getMonth(), date.getFullYear());
-      }
+      if (savedMonth) setSelectedMonth(parseInt(savedMonth));
+      if (savedDay) setSelectedDay(parseInt(savedDay));
+      loadMonthlyData(
+        savedFuelType,
+        parseInt(savedMonth || "0"),
+        new Date().getFullYear()
+      );
     }
   };
 
@@ -59,24 +76,20 @@ const GasAndDiesel: React.FC = () => {
     if (savedData) {
       const parsedData: MonthlyData = JSON.parse(savedData);
       setMonthlyData(parsedData);
-      const currentDay = selectedDate?.getDate() || new Date().getDate();
-      if (parsedData[currentDay]) {
-        setCurrentDayData(parsedData[currentDay]);
+      if (parsedData[selectedDay]) {
+        setCurrentDayData(parsedData[selectedDay]);
       }
     }
   };
 
   useEffect(() => {
-    if (fuelType && selectedDate) {
+    if (fuelType) {
       localStorage.setItem("selectedFuelType", fuelType);
-      localStorage.setItem("selectedDate", selectedDate.toISOString());
-      loadMonthlyData(
-        fuelType,
-        selectedDate.getMonth(),
-        selectedDate.getFullYear()
-      );
+      localStorage.setItem("selectedMonth", selectedMonth.toString());
+      localStorage.setItem("selectedDay", selectedDay.toString());
+      loadMonthlyData(fuelType, selectedMonth, new Date().getFullYear());
     }
-  }, [fuelType, selectedDate]);
+  }, [fuelType, selectedMonth, selectedDay]);
 
   const handleFuelTypeSelect = (type: FuelType) => {
     setFuelType(type);
@@ -94,19 +107,25 @@ const GasAndDiesel: React.FC = () => {
     setMonthlySale(e.target.value);
   };
 
-  const handleDateChange = (date: Date | null) => {
-    setSelectedDate(date);
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedMonth(parseInt(e.target.value));
+  };
+
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const day = parseInt(e.target.value);
+    if (day >= 1 && day <= 31) {
+      setSelectedDay(day);
+    }
   };
 
   const handleSubmit = () => {
-    if (fuelType && selectedDate) {
-      const currentDay = selectedDate.getDate();
-      const currentMonth = selectedDate.getMonth() + 1;
-      const currentYear = selectedDate.getFullYear();
+    if (fuelType) {
+      const currentMonth = selectedMonth + 1;
+      const currentYear = new Date().getFullYear();
       const updatedMonthlyData: MonthlyData = { ...monthlyData };
 
       let cumulativeSale = 0;
-      for (let i = 1; i <= currentDay; i++) {
+      for (let i = 1; i <= selectedDay; i++) {
         if (updatedMonthlyData[i] && updatedMonthlyData[i].monthlySale) {
           cumulativeSale += parseFloat(updatedMonthlyData[i].monthlySale) || 0;
         }
@@ -119,9 +138,9 @@ const GasAndDiesel: React.FC = () => {
         cumulativeMonthlySale: cumulativeSale.toFixed(2),
       };
 
-      updatedMonthlyData[currentDay] = updatedDayData;
+      updatedMonthlyData[selectedDay] = updatedDayData;
 
-      updateFuelData(fuelType, currentMonth, currentDay, updatedDayData);
+      updateFuelData(fuelType, currentMonth, selectedDay, updatedDayData);
       updateViewData(fuelType, currentMonth, updatedMonthlyData);
 
       setCurrentDayData(updatedDayData);
@@ -172,16 +191,36 @@ const GasAndDiesel: React.FC = () => {
           <h3 className="text-xl font-semibold mb-4 text-gray-700">
             {fuelType.charAt(0).toUpperCase() + fuelType.slice(1)}
           </h3>
-          <div className="mb-6">
-            <label className="block mb-2 text-sm font-medium text-gray-700">
-              Select Date:
-            </label>
-            <DatePicker
-              selected={selectedDate}
-              onChange={handleDateChange}
-              dateFormat="MMMM d, yyyy"
-              className="border rounded p-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
+          <div className="mb-6 flex space-x-4">
+            <div className="flex-1">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Select Month:
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                {months.map((month, index) => (
+                  <option key={month} value={index}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Select Day:
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={selectedDay}
+                onChange={handleDayChange}
+                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
@@ -254,10 +293,8 @@ const GasAndDiesel: React.FC = () => {
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-2">Monthly Summary</h4>
             <p>
-              Date:{" "}
-              {selectedDate
-                ? selectedDate.toLocaleDateString()
-                : "No date selected"}
+              Date: {months[selectedMonth]} {selectedDay},{" "}
+              {new Date().getFullYear()}
             </p>
             <p>Monthly Sale: {currentDayData.monthlySale || "N/A"}</p>
             <p>
