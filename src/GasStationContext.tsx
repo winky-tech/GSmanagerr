@@ -377,6 +377,13 @@ export const GasStationProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
+    localStorage.setItem(
+      "salesManagementAllData",
+      JSON.stringify(salesManagementData)
+    );
+  }, [salesManagementData]);
+
+  useEffect(() => {
     localStorage.setItem("salesTotalsData", JSON.stringify(salesTotalsData));
   }, [salesTotalsData]);
 

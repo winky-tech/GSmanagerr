@@ -3,7 +3,17 @@ import { useGasStation } from "./GasStationContext";
 import "./Components.css";
 
 interface SalesManagementData {
-  [key: string]: string;
+  gasSales: string;
+  taxGrocerySales: string;
+  nonTaxGrocerySales: string;
+  deliSales: string;
+  lottoSales: string;
+  lotterySales: string;
+  salesTaxSales: string;
+  groceryPurchaseSales: string;
+  paidIn: string;
+  cashIn: string;
+  [key: string]: string; // This allows for additional string properties
 }
 
 interface CustomField {
@@ -102,9 +112,18 @@ const SalesManagement: React.FC = () => {
   }, [localSalesData, customFields, calculateLotterySubtotal]);
 
   const handleClearAllData = () => {
-    const clearedValues: SalesManagementData = Object.fromEntries(
-      defaultFields.map((key) => [key, ""])
-    );
+    const clearedValues: SalesManagementData = {
+      gasSales: "",
+      taxGrocerySales: "",
+      nonTaxGrocerySales: "",
+      deliSales: "",
+      lottoSales: "",
+      lotterySales: "",
+      salesTaxSales: "",
+      groceryPurchaseSales: "",
+      paidIn: "",
+      cashIn: "",
+    };
     setLocalSalesData(clearedValues);
     setCustomFields({});
     updateSalesManagementData(clearedValues);
